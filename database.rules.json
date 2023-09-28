@@ -1,0 +1,10 @@
+{
+  "rules": {
+    "carts": {
+      "$cartId": {
+        ".read": "auth != null", // Allow read access to authenticated users
+        ".write": "auth != null", // Allow write access to authenticated users
+      }
+    }
+  }
+}
