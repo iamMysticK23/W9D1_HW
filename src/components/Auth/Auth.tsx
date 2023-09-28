@@ -1,13 +1,11 @@
 import * as _React from "react";
 import { useState } from "react";
 import {
-  useSignInWithEmailAndPassword,
   useSignInWithGoogle,
 } from "react-firebase-hooks/auth";
 import {
   onAuthStateChanged,
   getAuth,
-  GoogleAuthProvider,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
 } from "firebase/auth";
@@ -74,14 +72,14 @@ interface SubmitProps {
 // making a literal union type for our alerts
 export type MessageType = "error" | "warning" | "info" | "success";
 
-const GoogleButton = (props: ButtonProps) => {
+const GoogleButton = (_props: ButtonProps) => {
   // setting up our hooks to manage the state of some things
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState<string>();
   const [messageType, setMessageType] = useState<MessageType>();
   const navigate = useNavigate(); //instantiate that useNavigate() object to use
   const auth = getAuth(); //essentially monitoring the state of our authorization
-  const [signInWithGoogle, user, loading, error] = useSignInWithGoogle(auth);
+  const [signInWithGoogle, _user, loading, error] = useSignInWithGoogle(auth);
 
   const signIn = async () => {
     await signInWithGoogle();
@@ -167,7 +165,6 @@ const SignIn = () => {
         }, 2000);
       })
       .catch((error) => {
-        const errorCode = error.code;
         const errorMessage = error.message;
         setMessage(errorMessage);
         setMessageType("error");
@@ -239,7 +236,6 @@ const SignUp = () => {
         }, 2000);
       })
       .catch((error) => {
-        const errorCode = error.code;
         const errorMessage = error.message;
         setMessage(errorMessage);
         setMessageType("error");

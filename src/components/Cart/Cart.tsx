@@ -32,6 +32,7 @@ import { shopStyles } from "../Shop";
 import { serverCalls } from "../../api";
 import { useGetOrder } from "../../customHooks";
 import { Order } from "../Order";
+import { MessageType } from "../Auth"
 
 export interface CreateState {
   customer: string;
