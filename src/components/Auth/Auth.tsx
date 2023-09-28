@@ -76,7 +76,7 @@ interface SubmitProps {
 
 
 // making a literal union type for our alerts
-type MessageType = 'error' | 'warning' | 'info' | 'success'
+export type MessageType = 'error' | 'warning' | 'info' | 'success'
 
 
 const GoogleButton = (props: ButtonProps ) => {
@@ -99,7 +99,7 @@ const GoogleButton = (props: ButtonProps ) => {
             if (user) {
                 localStorage.setItem('user', user.email || '') 
                 localStorage.setItem('token', user.uid || '') //will be using this later to store cart items on a specific user but also make API calls
-                setMessage(`Successfully logged in ${user.email}`)
+                setMessage(`${user.email} has been logged in.`)
                 setMessageType('success')
                 setOpen(true)
                 setTimeout(() => {navigate('/shop')}, 2000) //will display successful message to user & then navigate to shop
@@ -170,7 +170,7 @@ const SignIn = () => {
             })
             const user = userCredential.user;
             // Once a user is signed in we can display a success message
-            setMessage(`Successfully logged in user ${user.email}`)
+            setMessage(`${user.email} : logged in.`)
             setMessageType('success')
             setOpen(true)
             setTimeout(()=>{navigate('/shop')}, 2000)
@@ -187,7 +187,7 @@ const SignIn = () => {
     return (
         <Box>
             <form onSubmit = {handleSubmit(onSubmit)}>
-                <Typography variant='h6'>Sign Into Your Account</Typography>
+                <Typography variant='h6'>Account Sign In</Typography>
                 <Box>
                     <label htmlFor='email'></label>
                     <InputText {...register('email')} name='email' placeholder='Email Here' />
@@ -238,7 +238,7 @@ const SignUp = () => {
             })
             const user = userCredential.user;
             // Once a user is signed in we can display a success message
-            setMessage(`Successfully logged in user ${user.email}`)
+            setMessage(`${user.email} is logged in.`)
             setMessageType('success')
             setOpen(true)
             setTimeout(()=>{navigate('/shop')}, 2000)
@@ -255,10 +255,10 @@ const SignUp = () => {
     return (
         <Box>
             <form onSubmit = {handleSubmit(onSubmit)}>
-                <Typography variant='h6'>Sign Up for Free!</Typography>
+                <Typography variant='h6'>Register To View Car Inventory</Typography>
                 <Box>
                     <label htmlFor='email'></label>
-                    <InputText {...register('email')} name='email' placeholder='Email Here' />
+                    <InputText {...register('email')} name='email' placeholder='Email Address' />
                     <label htmlFor='password'></label>
                     <InputPassword {...register('password')} name='password' placeholder='Password must be 6 or more characters' />
                 </Box>
@@ -303,7 +303,7 @@ export const Auth = (props: Props) => {
                     </Typography>
                     <br />
                     <Typography variant ='h5'>
-                        Track your shop items for free!
+                        View Car Order Progress
                     </Typography>
                     <br />
                     <GoogleButton open = {open} onClick = {handleSnackClose} />

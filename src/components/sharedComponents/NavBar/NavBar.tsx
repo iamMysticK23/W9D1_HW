@@ -120,12 +120,12 @@ export const NavBar = () => {
             onClick: () => {navigate('/')}
         },
         {
-            text: myAuth === 'true' ? 'Shop' : 'Sign In',
+            text: myAuth === 'true' ? 'Shop For A Car' : 'Sign In',
             icon: myAuth === 'true' ? <ShoppingBagIcon /> : <AssignmentIndIcon />,
             onClick: () => {navigate(myAuth === 'true' ? '/shop' : '/auth')}
         },
         {
-            text: myAuth === 'true' ? 'Cart' : '',
+            text: myAuth === 'true' ? 'View Cart' : '',
             icon: myAuth === 'true' ?  <ShoppingCartIcon /> : '',
             onClick: myAuth === 'true' ? () => {navigate('/cart')} : () => {}
         },
@@ -157,7 +157,9 @@ export const NavBar = () => {
                 sx={ open ? navStyles.appBarShift : navStyles.appBar }
                 position = 'fixed'
             >
-                <Toolbar sx={ navStyles.toolbar }>
+                <Toolbar 
+                    sx={ navStyles.toolbar }
+                    >
                     <IconButton
                         color='inherit'
                         aria-label='open drawer'
