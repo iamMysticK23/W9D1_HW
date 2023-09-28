@@ -1,245 +1,322 @@
-import * as React  from 'react'; 
-import { useState, useEffect } from 'react'; 
-import {
+import * as _React from "react";
+import { useState, useEffect } from "react";
+import {   
     Box,
     Button,
     Stack,
-    Typography } from '@mui/material';
-import Accordion from '@mui/material/Accordion';
-import AccordionSummary from '@mui/material/AccordionSummary';
-import AccordionDetails from '@mui/material/AccordionDetails'; 
+    Typography,
+    Snackbar,
+    Alert,} from "@mui/material";
+import Accordion from "@mui/material/Accordion";
+import AccordionSummary from "@mui/material/AccordionSummary";
+import AccordionDetails from "@mui/material/AccordionDetails";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import CardMedia from "@mui/material/CardMedia";
 import Grid from "@mui/material/Grid";
-import InfoIcon from '@mui/icons-material/Info';
-import { getDatabase, ref, onValue, off, remove, update } from 'firebase/database';
+import InfoIcon from "@mui/icons-material/Info";
+import {
+  getDatabase,
+  ref,
+  onValue,
+  off,
+  remove,
+  update,
+} from "firebase/database";
 
 // internal imports
-import { NavBar } from '../sharedComponents';
-import { theme } from '../../Theme/themes';
-import { ShopState } from '../../customHooks';
-import { shopStyles } from '../Shop';
-import { serverCalls } from '../../api';
-import { useGetOrder } from '../../customHooks';
-
-
+import { NavBar } from "../sharedComponents";
+import { theme } from "../../Theme/themes";
+import { ShopState } from "../../customHooks";
+import { shopStyles } from "../Shop";
+import { serverCalls } from "../../api";
+import { useGetOrder } from "../../customHooks";
+import { Order } from "../Order";
 
 export interface CreateState {
-    customer: string
-    order: ShopState[]
+  customer: string;
+  order: ShopState[];
 }
-
-
 
 export const Cart = () => {
-    const { orderData, getData } = useGetOrder(); 
-    const [ currentCart, setCart ] = useState<ShopState[]>([]);
-    const db = getDatabase();
-    const userId = localStorage.getItem('token')
-    const cartRef = ref(db, `carts/${userId}/`); 
+  const { orderData } = useGetOrder();
+  const [openAlert, setAlertOpen] = useState(false);
+  const [message, setMessage] = useState<string>();
+  const [messageType, setMessageType] = useState<MessageType>();
+  const [currentCart, setCart] = useState<ShopState[]>([]);
+  const db = getDatabase();
+  const userId = localStorage.getItem("token");
+  const cartRef = ref(db, `carts/${userId}/`);
 
-    console.log("Customer Car Purchase: ", orderData)
+  console.log("Customer Car Purchase: ", orderData);
 
+  // make a useEffect hook that is listening for changes in the cart
+  useEffect(() => {
+    // we will use the onValue() to listen for changes in our cart
+    onValue(cartRef, (snapshot) => {
+      const data = snapshot.val();
 
-    // make a useEffect hook that is listening for changes in the cart
-    useEffect(() => {
+      let cartList = [];
 
-        // we will use the onValue() to listen for changes in our cart
-        onValue(cartRef, (snapshot) => {
-            const data = snapshot.val()
-
-            let cartList = []
-
-            if (data){
-                for (let [key,value] of Object.entries(data)){
-                    let cartItem = value as ShopState
-                    cartItem['id'] = key
-                    cartList.push(cartItem)
-                }
-            }
-
-            setCart(cartList as ShopState[])
-        });
-
-        // Cleanup the event listener when it unmounts/detaches 
-
-        return () => {
-
-            off(cartRef)
-        };
-
-    }, []);
-
-
-    // functionality to Checkout our Cart & create an order 
-    const checkout = async () => {
-
-        let data: CreateState = {
-            "customer": userId as string,
-            "order": currentCart
+      if (data) {
+        for (let [key, value] of Object.entries(data)) {
+          let cartItem = value as ShopState;
+          cartItem["id"] = key;
+          cartList.push(cartItem);
         }
+      }
 
-        // this makes API to our flask server to create an order
-        const response = await serverCalls.createOrder(data)
+      setCart(cartList as ShopState[]);
+    });
 
-        remove(cartRef)
-        .then(() => {
-            console.log("Car removed from order successfully.")
-            window.location.reload()
-        })
-        .catch((error) => {
-            console.log("Error clearing cart: " + error.message)
-        })
+    // Cleanup the event listener when it unmounts/detaches
 
+    return () => {
+      off(cartRef);
+    };
+  }, []);
+
+  // functionality to Checkout our Cart & create an order
+  const checkout = async () => {
+    let data: CreateState = {
+      customer: userId as string,
+      order: currentCart,
+    };
+
+    // this makes API to our flask server to create an order
+    await serverCalls.createOrder(data);
+
+    remove(cartRef)
+      .then(() => {
+        console.log("Car removed from order successfully.");
+        window.location.reload();
+      })
+      .catch((error) => {
+        console.log("Error clearing cart: " + error.message);
+      });
+  };
+
+  // We want to be able to update our Cart Quantity
+  const updateQuantity = async (id: string, operation: string) => {
+    // using the .findIndex method to find the index of a certain object
+    const dataIndex = currentCart.findIndex((cart) => cart.id === id); //looping through our list of objects until it finds  match & will return the index of the match
+
+    // make a new variable to update the currentCart state
+    const updatedData = [...currentCart];
+    if (operation === "dec") {
+      updatedData[dataIndex].quantity -= 1;
+    } else {
+      updatedData[dataIndex].quantity += 1;
     }
 
+    setCart(updatedData);
+  };
 
-    // We want to be able to update our Cart Quantity 
-    const updateQuantity = async (id: string, operation: string) => {
+  // We can increment & decrement quantity without updating the cart but once we hit update then it'll update the cart
+  const updateCart = async (cartItem: ShopState) => {
+    const itemRef = ref(db, `carts/${userId}/${cartItem.id}`);
 
-        // using the .findIndex method to find the index of a certain object 
-        const dataIndex = currentCart.findIndex((cart) => cart.id === id) //looping through our list of objects until it finds  match & will return the index of the match
+    // use the update() function to update a specific item
+    update(itemRef, {
+      quantity: cartItem.quantity,
+    })
+      .then(() => {
+        console.log("Car order updated successfully.");
+        setMessage(`Successfully updated your car purchase order`)
+        setMessageType('success')
+        setAlertOpen(true)
+    })
 
+      .catch((error) => {
+        console.log("Error updating cart: ", + error.message);
+        setMessage(error.message)
+        setMessageType('error')
+        setAlertOpen(true)
+      });
+  };
 
-        // make a new variable to update the currentCart state
-        const updatedData = [...currentCart]
-        if (operation === 'dec'){
-            updatedData[dataIndex].quantity -= 1
-        } else {
-            updatedData[dataIndex].quantity += 1 
-        }
+  // Add function to delete items from our cart
+  const deleteItem = async (cartItem: ShopState) => {
+    const itemRef = ref(db, `carts/${userId}/${cartItem.id}`);
 
-        setCart(updatedData)
-    }
+    // use the remove() function to remove a specific item
+    remove(itemRef)
+      .then(() => {
+        console.log("Successfully deleted from order.");
+        setMessage('Successfully deleted from order ')
+        setMessageType('success')
+        setAlertOpen(true)
+      })
+      .catch((error) => {
+        console.log("Error deleting item: ", + error.message);
+        setMessage(error.message)
+        setMessageType('error')
+        setAlertOpen(true)
+      });
+  };
 
-    // We can increment & decrement quantity without updating the cart but once we hit update then it'll update the cart 
-    const updateCart = async ( cartItem: ShopState ) => {
-
-        const itemRef = ref(db, `carts/${userId}/${cartItem.id}`)
-
-
-        // use the update() function to update a specific item
-        update(itemRef, {
-            quantity: cartItem.quantity 
-        })
-        .then(() => {
-            console.log("Car order updated successfully.")
-        })
-        .catch((error) => {
-            console.log("Error updating cart: ", + error.message)
-        })
-    }
-
-    // Add function to delete items from our cart 
-    const deleteItem = async ( cartItem: ShopState ) => {
-
-        const itemRef = ref(db, `carts/${userId}/${cartItem.id}`)
-
-        // use the remove() function to remove a specific item
-        remove(itemRef)
-        .then(() => {
-            console.log("Successfully deleted car from order.")
-        })
-        .catch((error) => {
-            console.log("Error deleting item: ", + error.message)
-        })
-
-    }
-
-
-    return (
-        <Box sx={shopStyles.main} >
-            <NavBar />
-            <Stack direction = 'column' sx={shopStyles.main}>
-                <Stack direction = 'row' sx={{alignItems: 'center', marginTop: '100px', marginLeft: '200px'}}>
-                    <Typography
-                        variant = 'h4'
-                        sx = {{marginRight: '20px'}}
+  return (
+    <Box sx={shopStyles.main}>
+      <NavBar />
+      <Stack direction="column" sx={shopStyles.main}>
+        <Stack
+          direction="row"
+          sx={{ alignItems: "center", marginTop: "100px", marginLeft: "200px" }}
+        >
+          <Typography variant="h4" sx={{ marginRight: "20px" }}>
+            Purchase Order
+          </Typography>
+          {/* <Button color = 'primary' variant = 'contained' onClick={ checkout }>Checkout </Button> */}
+        </Stack>
+        <Grid container spacing={3} sx={shopStyles.grid}>
+          {currentCart.map((shop: ShopState, index: number) => (
+            <Grid item key={index} xs={12} md={6} lg={4}>
+              <Card sx={shopStyles.card}>
+                <CardMedia
+                  component="img"
+                  sx={shopStyles.cardMedia}
+                  image={shop.image}
+                  alt={shop.name}
+                />
+                <CardContent>
+                  <Stack
+                    direction="column"
+                    justifyContent="space-between"
+                    alignItems="center"
+                  >
+                    <Accordion
+                      sx={{
+                        color: "white",
+                        backgroundColor: theme.palette.secondary.light,
+                      }}
                     >
-                        Your Cart
-                    </Typography>
-                    <Button color = 'primary' variant = 'contained' onClick={ checkout }>Checkout </Button>
-                </Stack>
-                <Grid container spacing={3} sx={shopStyles.grid}>
-                    {currentCart.map((shop: ShopState, index: number) => (
-                        <Grid item key={index} xs={12} md={6} lg={4}>
-                            <Card
-                                sx={shopStyles.card}
-                            >
-                            <CardMedia
-                                component='img'
-                                sx={shopStyles.cardMedia}
-                                image={shop.image}
-                                alt={shop.name}
-                            />
-                            <CardContent>
-                                <Stack direction = 'column' justifyContent='space-between' alignItems='center'>
-                                    <Accordion sx={{color: 'white', backgroundColor: theme.palette.secondary.light }}>
-                                        <AccordionSummary
-                                            expandIcon={<InfoIcon sx={{color: theme.palette.primary.main}} />}
-                                            aria-controls="panel1a-content"
-                                            id="panel1a-header"
-                                        >
-                                            <Typography>{shop.name}</Typography>
-                                        </AccordionSummary>
-                                        <AccordionDetails>
-                                            <Typography>{shop.description}</Typography>
-                                        </AccordionDetails>
-                                    </Accordion>
-                                    <Stack direction ='row' alignItems='center' justifyContent='space-between' sx={shopStyles.stack2}>
-                                        <Button
-                                            style={{ backgroundColor: '#3f3f3f', color: 'white' }}
-                                            size='large'
-                                            variant='text'
-                                            onClick={()=>{updateQuantity(shop.id, 'dec')}}
-                                        >-</Button>
-                                        <Typography variant = 'h6' sx={{color: 'white'}}>
-                                            {shop.quantity}
-                                        </Typography>
-                                        <Button
-                                            style={{ backgroundColor: '#3f3f3f', color: 'white' }}
-                                            size='large'
-                                            variant='text'
-                                            onClick={()=>{updateQuantity(shop.id, 'inc')}}
-                                        >+</Button>
-                                    </Stack>
-                                    <Button
-                                            size='medium'
-                                            variant='outlined'
-                                            onClick={() => { updateCart(shop) }}
-                                            
-                                            sx={{
-                                            '&:hover': {
-                                              backgroundColor: '#9BAD19',
-                                            },
-                                            ...shopStyles.button, 
-                                          }}
-
-                                            >
-                                            Update Quantity - ${(shop.quantity * parseFloat(shop.price)).toFixed(2)}
-                                            </Button>
-                                    <Button
-                                        size='medium'
-                                        variant='outlined'
-                                        onClick={()=>{deleteItem(shop)}}
-
-                                        sx={{
-                                            '&:hover': {
-                                              backgroundColor: '#9BAD19',
-                                            },
-                                            ...shopStyles.button, 
-                                          }}
-                                    >
-                                        Delete car from purchase order
-                                    </Button>
-                                </Stack>
-                            </CardContent>
-                            </Card>
-                        </Grid>
-                    ))}
-                </Grid>
-            </Stack>
-        </Box>
-    )
-}
+                      <AccordionSummary
+                        expandIcon={
+                          <InfoIcon
+                            sx={{ color: theme.palette.primary.main }}
+                          />
+                        }
+                        aria-controls="panel1a-content"
+                        id="panel1a-header"
+                      >
+                        <Typography>{shop.name}</Typography>
+                      </AccordionSummary>
+                      <AccordionDetails>
+                        <Typography>{shop.description}</Typography>
+                      </AccordionDetails>
+                    </Accordion>
+                    <Stack
+                      direction="row"
+                      alignItems="center"
+                      justifyContent="space-between"
+                      sx={shopStyles.stack2}
+                    >
+                      <Button
+                        style={{ backgroundColor: "#3f3f3f", color: "white" }}
+                        size="large"
+                        variant="text"
+                        onClick={() => {
+                          updateQuantity(shop.id, "dec");
+                        }}
+                      >
+                        -
+                      </Button>
+                      <Typography variant="h6" sx={{ color: "white" }}>
+                        {shop.quantity}
+                      </Typography>
+                      <Button
+                        style={{ backgroundColor: "#3f3f3f", color: "white" }}
+                        size="large"
+                        variant="text"
+                        onClick={() => {
+                          updateQuantity(shop.id, "inc");
+                        }}
+                      >
+                        +
+                      </Button>
+                    </Stack>
+                    <Button
+                      size="medium"
+                      variant="outlined"
+                      onClick={() => {
+                        updateCart(shop);
+                      }}
+                      sx={{
+                        "&:hover": {
+                          backgroundColor: "#9BAD19",
+                        },
+                        ...shopStyles.button,
+                      }}
+                    >
+                      Update Quantity - $
+                      {(shop.quantity * parseFloat(shop.price)).toFixed(2)}
+                    </Button>
+                    <Button
+                      size="medium"
+                      variant="outlined"
+                      onClick={() => {
+                        deleteItem(shop);
+                      }}
+                      sx={{
+                        "&:hover": {
+                          backgroundColor: "#9BAD19",
+                        },
+                        ...shopStyles.button,
+                      }}
+                    >
+                      Delete car from purchase order
+                    </Button>
+                  </Stack>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            height: "100vh",
+          }}
+        >
+          <Button
+            color="primary"
+            variant="contained"
+            sx={{
+              marginTop: "30px",
+              padding: "6px 12px",
+              fontSize: "12px",
+              width: "100%",
+              maxWidth: "300px",
+            }}
+            onClick={checkout}
+          >
+            Checkout
+          </Button>
+        </div>
+        <Stack
+          direction="column"
+          sx={{ width: "75%", marginLeft: "auto", marginRight: "auto" }}
+        >
+          <Typography
+            variant="h4"
+            sx={{ marginTop: "100px", marginBottom: "100px" }}
+          >
+            List Of Car Orders
+          </Typography>
+          <Order />
+        </Stack>
+      </Stack>
+      <Snackbar
+        open={openAlert}
+        autoHideDuration={3000}
+        onClose={()=> setAlertOpen(false)}
+    >
+        <Alert severity = {messageType}>
+            {message}
+        </Alert>
+    </Snackbar>
+    </Box>
+  );
+};
